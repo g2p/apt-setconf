@@ -39,21 +39,20 @@ BinPkg = collections.namedtuple(
 parser = argparse.ArgumentParser()
 args = parser.parse_args()
 
-sels = set()
 pkgs = set()
 
-proc = subprocess.Popen(['debconf-set-selections'], stdin=subprocess.PIPE, universal_newlines=True)
-
-for line in sys.stdin:
+def parse_line(line, out):
+    line = line.strip()
     if DC_BORING_RE.match(line):
-        continue
+        return
     fields = DC_RE.match(line).groups()
     dcs = DebconfSelection(*fields)
-    proc.stdin.write(line)
-    if dcs.type in {'note', 'seen'}:
-        continue
-    sels.add(dcs)
+    out.write(line + '\n')
     pkgs.add(dcs.pkg)
+
+proc = subprocess.Popen(['debconf-set-selections'], stdin=subprocess.PIPE, universal_newlines=True)
+for line in sys.stdin:
+    parse_line(line, proc.stdin)
 proc.stdin.close()
 proc.wait()
 assert proc.returncode == 0, proc.returncode
